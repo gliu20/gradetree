@@ -1,0 +1,221 @@
+<textarea id="tree" style="width:100%;height:60%;"># 0
+## 00
+## 01
+### 010
+## 02
+### 020
+## 03
+### 030
+# 1
+## 10</textarea>
+<textarea id="grades" disabled style="width:100%;height:30%;"></textarea>
+<button id="submit" style="width:100%;height:10%;" onclick="updateGrade();">Grade</button>
+<script src="libs/tree.js"></script>
+<script src="libs/grades.js"></script>
+
+<script>
+function updateGrade () {
+	document.getElementById('grades').value = (summary(grade(GDtoTree(document.getElementById('tree').value))))
+}
+
+function deepCopy(o) {//from outside sources
+    var output, v, key;
+    output = Array.isArray(o) ? [] : {};
+    for (key in o) {
+      v = o[key];
+      output[key] = (typeof v === "object") ? deepCopy(v) : v;
+    }
+    return output;
+}
+
+function getItemScore (item) {
+	if (!!item.fraction) {
+		return item.fraction[0] / item.fraction[1] * getItemWeight(item);
+	}
+	else {
+		return 0;
+	}
+}
+
+function getItemWeight (item) {
+	return item.weight || (item.fraction || [0,0])[1];
+}
+
+function propagateGenerationScores (tree,position) {
+	var child,parent;
+	position = position.slice(0);
+	
+	child = Tree.getByPosition(tree,position);
+	
+	position.pop()
+	
+	parent = Tree.getByPosition(tree,position);
+	
+	parent.fraction = parent.fraction || [0,0];
+
+	parent.fraction[0] += getItemScore(child)
+	parent.fraction[1] += getItemWeight(child)
+}
+
+function grade (tree) {
+
+	tree = deepCopy(tree);
+
+	var leafIndex = Tree.getMaximumDepth(tree);
+	var currGeneration;
+	
+	for (var i = leafIndex; i > 0; i--) {
+		currGeneration = Tree.getNodesAtDepth(tree,i);
+		
+		for (var j = 0; j < currGeneration.length; j++) {
+			propagateGenerationScores(tree,currGeneration[j])
+		}
+	}
+	
+	return tree;
+}
+
+function getMaxDepth (poss) {
+	var max = 0;
+	for (var pos in poss) {
+		max = Math.max(poss[pos],max);
+	}
+	return max;
+}
+
+function getPosAtDepth (pos,d) {
+	var ids = [];
+	for (var id in pos) {
+		if (pos[id] === d) {
+			ids.push(id);
+		}
+	}
+	return ids
+}
+
+function annotatePos (pos,arr) {
+	var posIds = [];
+	var prevDepth = 0;
+	var i = 0;
+	
+	var allPosIds = {};
+	
+	for (var id in pos) {
+		
+		
+		posIds[pos[id] - 1] += 1;
+		posIds[pos[id] - 1] = posIds[pos[id] - 1] || 0;
+		
+		posIds = posIds.slice(0,pos[id]);
+		
+		
+		prevDepth = pos[id];
+		
+		allPosIds[id] = posIds.slice(0);
+		
+		
+	}
+	
+	return allPosIds;
+}
+
+function GDtoTree (gradeDown) {
+	var arr = gradeDown.split("\n");
+	var pos = {};
+	var pos2 = {};
+	var dataIds = [];
+	
+	for (var i = 0; i < arr.length; i++) {
+		if ((arr[i].match(/#+/g) || [""])[0].length === 0) {
+			dataIds.push(i);
+		}
+		else {
+			pos[i] = (arr[i].match(/#+/g) || [""])[0].length;
+		}
+	}
+	
+	var allPosIds = annotatePos(pos,arr);
+	
+	console.log(allPosIds)
+	
+	var lastNotDataId = 0;
+	
+	var prototree = []
+	
+	for (var i = 0; i < arr.length; i++) {
+		if (dataIds.indexOf(i) !== -1) {
+			if (arr[i].indexOf("w") !== -1) {
+				Tree.getByPosition(prototree,allPosIds[lastNotDataId]).weight = Number(arr[i].match(/(w)([\s]*?)([0-9\.]+)/)[3]);
+			}
+			
+			if (arr[i].indexOf("f") !== -1) {
+				Tree.getByPosition(prototree,allPosIds[lastNotDataId]).fraction = [Number(arr[i].match(/(f)([\s]*?)([0-9\.]+)([\s]*?)(\/)([\s]*?)([0-9\.]+)/)[3]),Number(arr[i].match(/(f)([\s]*?)([0-9\.]+)([\s]*?)(\/)([\s]*?)([0-9\.]+)/)[7])];
+			}
+			 console.log(lastNotDataId + " gets " + i)
+			 console.log(Tree.getByPosition(prototree,allPosIds[lastNotDataId]))
+		}
+		else {
+			Tree.getByPosition(prototree,allPosIds[i]).name = arr[i].match(/([\s]*)(#+)([\s]*)([\s\S]+)/)[4]
+			lastNotDataId = i;
+		}
+	}
+	
+	return prototree;
+	
+}
+
+function summary (tree) {
+	var sum = "";
+	Tree.iterate(tree, function (pos) {
+		var obj = Tree.getByPosition(tree,pos);
+		var fr = obj.fraction;
+		var name = obj.name;
+		
+		fr = fr[0] / fr[1] * 100;
+		
+		sum += "\t".repeat(pos.length - 1);
+		sum += name;
+		sum += "\t" + Grade.toAccuracy(fr,5);
+		sum += "\t" + Grade.percentToLetter(fr);
+		sum += "\t" + Grade.toAccuracy(Grade.percentToGPA(fr),5) + "\n";
+	})
+	return sum;
+}
+
+function insertText(textfield,text) {
+	var ss = textfield.selectionStart;
+	var se = textfield.selectionEnd;
+	
+	
+	
+	textfield.value = textfield.value.substr(0,ss) + text + textfield.value.substr(se,textfield.value.length);
+	
+	textfield.setSelectionRange(ss+1,ss+1)
+	
+}
+
+document.getElementById('tree').addEventListener('keydown',function (e) {
+	if (e.keyCode === 9) {
+		e.preventDefault();
+		insertText(document.getElementById('tree'),'\t');
+		
+	}
+	localStorage.setItem("tree",document.getElementById('tree').value);
+})
+
+document.getElementById('tree').addEventListener('keyup',function () {
+	localStorage.setItem("tree",document.getElementById('tree').value);
+});
+
+document.getElementById('tree').addEventListener('keypress',function () {
+	localStorage.setItem("tree",document.getElementById('tree').value);
+});
+
+if (!!localStorage.getItem("tree")) {
+	document.getElementById('tree').value = localStorage.getItem("tree");
+}
+
+
+</script>
+
+
