@@ -38,6 +38,9 @@ function getItemScore (item) {
 }
 
 function getItemWeight (item) {
+	if (item.weight === 0) {
+		return 0;
+	}
 	return item.weight || (item.fraction || [0,0])[1];
 }
 
