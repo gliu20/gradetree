@@ -158,7 +158,7 @@ function GDtoTree (gradeDown) {
 			 console.log(Tree.getByPosition(prototree,allPosIds[lastNotDataId]))
 		}
 		else {
-			Tree.getByPosition(prototree,allPosIds[i]).name = arr[i].match(/([\s]*)(#+)([\s]*)([\s\S]+)/)[4]
+			Tree.getByPosition(prototree,allPosIds[i]).name = arr[i].match(/([\s]*)(#+)([\s]*)([\S ]+)([\t ]*)/)[4]
 			lastNotDataId = i;
 		}
 	}
@@ -176,11 +176,19 @@ function summary (tree) {
 		
 		fr = fr[0] / fr[1] * 100;
 		
+		var toAdd = "";
+		
+		toAdd += "        ".repeat(pos.length - 1);
+		toAdd += name;
+		
 		sum += "\t".repeat(pos.length - 1);
 		sum += name;
-		sum += "\t" + Grade.toAccuracy(fr,5);
+		sum += " ".repeat(80 - toAdd.length);
+		sum += "" + Grade.toAccuracy(fr,4);
 		sum += "\t" + Grade.percentToLetter(fr);
-		sum += "\t" + Grade.toAccuracy(Grade.percentToGPA(fr),5) + "\n";
+		sum += "\t" + Grade.toAccuracy(Grade.percentToGPA(fr),4) + "\n";
+		
+		
 	})
 	return sum;
 }
