@@ -23,7 +23,7 @@ use multiple `#`s as shown
 ```
 
 ### Example
-
+Demonstrates an example where Tests are worth 40% of quarter, Quizzes 40%, and Participation is worth 20% 
 (indentation is optional)
 ```
 # Quarter grade
